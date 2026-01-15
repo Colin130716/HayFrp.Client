@@ -1,0 +1,157 @@
+name: HayFrp Client Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+
+          # macOS
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+
+          # Linux (仅 x64，AppImage)
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.12.0"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # 修 Ubuntu apt 403
+      - name: Disable Microsoft apt repos
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/azure-cli.list
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+
+      # Linux 必要依赖
+      - name: Install Linux deps
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            fuse libfuse2
+
+      - name: Install deps
+        run: bun install
+
+      # Windows
+      - name: Build Tauri (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: tauri-apps/tauri-action@v0
+        with:
+          args: --target ${{ matrix.target }} --bundles msi,nsis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # macOS
+      - name: Build Tauri (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: tauri-apps/tauri-action@v0
+        with:
+          args: --target ${{ matrix.target }} --bundles dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Linux
+      - name: Build Tauri (Linux)
+        if: matrix.os == 'ubuntu-22.04'
+        uses: tauri-apps/tauri-action@v0
+        with:
+          args: --target ${{ matrix.target }} --bundles appimage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Windows 重命名
+      - name: Rename Windows artifacts
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          cd src-tauri/target/${{ matrix.target }}/release/bundle
+
+          shopt -s nullglob
+
+          for f in nsis/*.exe; do
+            mv "$f" "nsis/hayfrpclient_${GITHUB_REF_NAME#v}_${{ matrix.target }}.exe"
+          done
+
+          for f in msi/*.msi; do
+            mv "$f" "msi/hayfrpclient_${GITHUB_REF_NAME#v}_${{ matrix.target }}.msi"
+          done
+
+      # macOS 重命名
+      - name: Rename macOS artifacts
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          cd src-tauri/target/${{ matrix.target }}/release/bundle/dmg;
+          for f in *.dmg; do
+            mv "$f" "hayfrpclient_${GITHUB_REF_NAME#v}_${{ matrix.target }}.dmg";
+          done;
+
+
+      # Linux 重命名
+      - name: Rename Linux artifacts
+        if: matrix.os == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          cd src-tauri/target/${{ matrix.target }}/release/bundle/appimage;
+          for f in *.AppImage; do
+            mv "$f" "hayfrpclient_${GITHUB_REF_NAME#v}_${{ matrix.target }}.AppImage";
+          done;
+
+
+      # 发布到 Release
+      - uses: softprops/action-gh-release@v2
+        if: matrix.os == 'windows-latest'
+        with:
+          files: |
+            src-tauri/target/${{ matrix.target }}/release/**/*.msi
+            src-tauri/target/${{ matrix.target }}/release/**/*setup*.exe
+
+      - uses: softprops/action-gh-release@v2
+        if: matrix.os == 'macos-latest'
+        with:
+          files: |
+            src-tauri/target/${{ matrix.target }}/release/**/*.dmg
+
+      - uses: softprops/action-gh-release@v2
+        if: matrix.os == 'ubuntu-22.04'
+        with:
+          files: |
+            src-tauri/target/${{ matrix.target }}/release/**/*.AppImage
