@@ -101,7 +101,7 @@
         <ItemTitle>API</ItemTitle>
       </ItemContent>
       <ItemActions>
-        <span v-if="data.api_url !== ''" class="text-muted-foreground">{{ handleGetHomeName(data.api_url) }}</span>
+        <span v-if="API_URL !== ''" class="text-muted-foreground">{{ handleGetHomeName(API_URL) }}</span>
 
         <Dialog>
           <DialogTrigger>
@@ -114,7 +114,7 @@
             <DialogHeader>
               <DialogTitle>API</DialogTitle>
             </DialogHeader>
-            <Input v-model:default-value="data.api_url"/>
+            <Input v-model:model-value="data.api_url"/>
             <Button @click="handleEditAPI">保存</Button>
           </DialogContent>
         </Dialog>
@@ -294,7 +294,6 @@ const handleEditAPI = async () => {
     }
 
     API_URL.value = data.api_url;
-
     await store.set("api_url", data.api_url);
   })();
 
@@ -355,7 +354,7 @@ onMounted(async () => {
     autoSave: true,
   });
   data.auto_start = await autostartIsEnabled();
-  data.api_url = await store.get("API_URL.value") || "https://api.hayfrp.com";
+  data.api_url = await store.get("api_url") || "https://api.hayfrp.com";
   data.auto_tunnel = await store.get("auto_tunnel") || false;
   data.accounts = await store.get("accounts") || [];
   data.frpc_version = await store.get("frpc_version") || "";
@@ -377,5 +376,4 @@ a {
 a::after {
   display: none;
 }
-
 </style>

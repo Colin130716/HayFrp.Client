@@ -3,7 +3,7 @@
     class="p-2 pb-0 flex items-center justify-between w-full bg-background dark:bg-[#151515]"
     style="-webkit-app-region: drag"
   >
-    <span class="ml-1"><b>HAYFRP</b></span>
+    <span class="ml-1"><b>HAYFRP</b> {{API_URL}}</span>
 
     <div class="flex items-center gap-2">
       <Button
@@ -42,6 +42,7 @@ import { MinusIcon, XIcon, RotateCwIcon } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {useNavStore} from "@/store/nav.ts";
+import {API_URL} from "@/lib/env.ts";
 
 const navStore = useNavStore();
 </script>

@@ -26,7 +26,6 @@ const mode = useColorMode();
 mode.value = "auto";
 
 onMounted(async () => {
-
   const store = await load("settings.json", {
     defaults: {
       auto_tunnel: false,
@@ -39,7 +38,6 @@ onMounted(async () => {
 
   API_URL.value = await store.get("api_url") || "https://api.hayfrp.com";
   FRPC_PATH.value = await store.get("frpc_path") || "";
-
 
   // 隧道自启动
   if (await store.get("auto_tunnel")) {
